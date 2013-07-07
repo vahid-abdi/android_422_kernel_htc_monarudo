@@ -95,10 +95,12 @@ struct msm_sensor_reg_t {
 	struct msm_camera_i2c_reg_conf *stop_stream_conf;
 	uint8_t stop_stream_conf_size;
 
+#ifdef CONFIG_RAWCHIPII
 	struct msm_camera_i2c_reg_conf *start_stream_conf_yushanii;
 	uint8_t start_stream_conf_size_yushanii;
 	struct msm_camera_i2c_reg_conf *stop_stream_conf_yushanii;
 	uint8_t stop_stream_conf_size_yushanii;
+#endif
 
 	struct msm_camera_i2c_reg_conf *group_hold_on_conf;
 	uint8_t group_hold_on_conf_size;
@@ -107,8 +109,10 @@ struct msm_sensor_reg_t {
 	struct msm_camera_i2c_conf_array *init_settings;
 	uint8_t init_size;
 
+#ifdef CONFIG_RAWCHIPII
 	struct msm_camera_i2c_conf_array *init_settings_yushanii;
 	uint8_t init_size_yushanii;
+#endif
 
 	struct msm_camera_i2c_conf_array *init_settings_2;
 	uint8_t init_size_2;
@@ -116,7 +120,9 @@ struct msm_sensor_reg_t {
 	struct msm_camera_i2c_conf_array *mode_settings;
 	struct msm_camera_i2c_conf_array *no_effect_settings;
 	struct msm_sensor_output_info_t *output_settings;
+#ifdef CONFIG_RAWCHIPII
 	struct msm_sensor_output_info_t *output_settings_yushanii;
+#endif
 	uint8_t num_conf;
 };
 
