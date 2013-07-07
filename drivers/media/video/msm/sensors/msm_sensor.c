@@ -174,7 +174,7 @@ int32_t msm_sensor_write_init_settings(struct msm_sensor_ctrl_t *s_ctrl)
 			s_ctrl->sensor_i2c_client,
 			s_ctrl->msm_sensor_reg->init_settings_yushanii,
 			s_ctrl->msm_sensor_reg->init_size_yushanii);
-	} else 
+	} else
 #endif
         {
 		rc = msm_sensor_write_all_conf_array(
@@ -220,6 +220,19 @@ int32_t msm_sensor_write_res_settings(struct msm_sensor_ctrl_t *s_ctrl,
 	if (s_ctrl->func_tbl->sensor_adjust_frame_lines)
 		rc = s_ctrl->func_tbl->sensor_adjust_frame_lines(s_ctrl, res);
 
+	if (s_ctrl->prev_dig_gain > 0 && s_ctrl->prev_line > 0){
+		if (s_ctrl->func_tbl->
+			sensor_write_exp_gain_ex != NULL){
+		    s_ctrl->func_tbl->
+		        sensor_write_exp_gain_ex(
+		        s_ctrl,
+		        SENSOR_PREVIEW_MODE,
+		        s_ctrl->prev_gain,
+		        s_ctrl->prev_dig_gain,
+		        s_ctrl->prev_line);
+		}
+	}
+
 	return rc;
 }
 
@@ -260,7 +273,7 @@ void msm_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 		s_ctrl->msm_sensor_reg->start_stream_conf_yushanii,
 		s_ctrl->msm_sensor_reg->start_stream_conf_size_yushanii,
 		s_ctrl->msm_sensor_reg->default_data_type);
-	} else 
+	} else
 #endif
         {
 		msm_camera_i2c_write_tbl(
@@ -283,8 +296,8 @@ void msm_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 		s_ctrl->msm_sensor_reg->stop_stream_conf_yushanii,
 		s_ctrl->msm_sensor_reg->stop_stream_conf_size_yushanii,
 		s_ctrl->msm_sensor_reg->default_data_type);
-	} else 
-#endif        
+	} else
+#endif
         {
 		msm_camera_i2c_write_tbl(
 		s_ctrl->sensor_i2c_client,
@@ -686,13 +699,6 @@ int32_t msm_sensor_setting_parallel(struct msm_sensor_ctrl_t *s_ctrl,
 
 		
 		mutex_lock(s_ctrl->sensor_first_mutex);
-
-#ifdef CONFIG_RAWCHIPII
-		if(YushanII_Get_reloadInfo() == 0){
-			pr_info("stop YushanII first");
-			Ilp0100_stop();
-		}
-#endif
 		v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 			NOTIFY_ISPIF_STREAM, (void *)ISPIF_STREAM(
 			PIX_0, ISPIF_OFF_IMMEDIATELY));
@@ -1270,6 +1276,10 @@ int32_t msm_sensor_mode_init(struct msm_sensor_ctrl_t *s_ctrl,
 		s_ctrl->curr_res = MSM_SENSOR_INVALID_RES;
 		s_ctrl->cam_mode = mode;
 
+		s_ctrl->prev_gain = 0;
+		s_ctrl->prev_dig_gain = 0;
+		s_ctrl->prev_line = 0;
+
 		rc = s_ctrl->func_tbl->sensor_setting(s_ctrl,
 			MSM_SENSOR_REG_INIT, 0);
 	}
@@ -1280,6 +1290,7 @@ int32_t msm_sensor_get_output_info(struct msm_sensor_ctrl_t *s_ctrl,
 		struct sensor_output_info_t *sensor_output_info)
 {
 	int rc = 0;
+	int i=0;
 	CDBG("%s: called\n", __func__);
 
 	sensor_output_info->num_info = s_ctrl->msm_sensor_reg->num_conf;
@@ -1293,6 +1304,11 @@ int32_t msm_sensor_get_output_info(struct msm_sensor_ctrl_t *s_ctrl,
 		s_ctrl->sensor_exp_gain_info->sensor_max_linecount = 0xFFFFFFFF;
 
 	sensor_output_info->sensor_max_linecount = s_ctrl->sensor_exp_gain_info->sensor_max_linecount;
+
+    for (i=0;i<s_ctrl->msm_sensor_reg->num_conf;++i)
+        if (s_ctrl->adjust_y_output_size)
+            s_ctrl->msm_sensor_reg->output_settings[i].y_output -= 1;
+
 	
 #ifdef CONFIG_RAWCHIPII	 
 	if ((s_ctrl->sensordata->htc_image == HTC_CAMERA_IMAGE_YUSHANII_BOARD) && (s_ctrl->msm_sensor_reg->output_settings_yushanii)) {
@@ -1301,15 +1317,20 @@ int32_t msm_sensor_get_output_info(struct msm_sensor_ctrl_t *s_ctrl,
 			sizeof(struct msm_sensor_output_info_t) *
 			s_ctrl->msm_sensor_reg->num_conf))
 			rc = -EFAULT;
-	} else 
-#endif 
-        {
+	} else
+#endif
+       {
 		if (copy_to_user((void *)sensor_output_info->output_info,
 			s_ctrl->msm_sensor_reg->output_settings,
 			sizeof(struct msm_sensor_output_info_t) *
 			s_ctrl->msm_sensor_reg->num_conf))
 			rc = -EFAULT;
 	}
+
+    for (i=0;i<s_ctrl->msm_sensor_reg->num_conf;++i)
+        if (s_ctrl->adjust_y_output_size)
+            s_ctrl->msm_sensor_reg->output_settings[i].y_output += 1;
+
 	
 	return rc;
 }
@@ -1394,6 +1415,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 					cdata.cfg.exp_gain.line);
 			s_ctrl->prev_gain = cdata.cfg.exp_gain.gain;
 			s_ctrl->prev_line = cdata.cfg.exp_gain.line;
+			s_ctrl->prev_dig_gain= cdata.cfg.exp_gain.dig_gain;
 			break;
 
 		case CFG_SET_HDR_EXP_GAIN:
@@ -1917,9 +1939,7 @@ power_down:
 #endif
 	}
 
-#ifdef CONFIG_RAWCHIPII
 	if (s_ctrl->sensordata->htc_image == HTC_CAMERA_IMAGE_YUSHANII_BOARD) {
-#endif
 #ifdef CONFIG_RAWCHIPII
 		YushanII_probe_deinit();
 #endif
@@ -2074,4 +2094,50 @@ int msm_sensor_enable_debugfs(struct msm_sensor_ctrl_t *s_ctrl)
 		return -ENOMEM;
 
 	return 0;
+}
+
+#include <linux/fs.h>
+#include <linux/file.h>
+#include <linux/vmalloc.h>
+#include <asm/segment.h>
+#include <asm/uaccess.h>
+#include <linux/buffer_head.h>
+
+void msm_fclose(struct file* file) {
+    filp_close(file, NULL);
+}
+
+int msm_fwrite(struct file* file, unsigned long long offset, unsigned char* data, unsigned int size) {
+    mm_segment_t oldfs;
+    int ret;
+
+    oldfs = get_fs();
+    set_fs(get_ds());
+
+    ret = vfs_write(file, data, size, &offset);
+
+    set_fs(oldfs);
+    return ret;
+}
+
+struct file* msm_fopen(const char* path, int flags, int rights) {
+    struct file* filp = NULL;
+    mm_segment_t oldfs;
+    int err = 0;
+
+    oldfs = get_fs();
+    set_fs(get_ds());
+    filp = filp_open(path, flags, rights);
+    set_fs(oldfs);
+    if(IS_ERR(filp)) {
+        err = PTR_ERR(filp);
+    pr_err("[CAM]File Open Error:%s",path);
+        return NULL;
+    }
+    if(!filp->f_op){
+    pr_err("[CAM]File Operation Method Error!!");
+    return NULL;
+    }
+
+    return filp;
 }
