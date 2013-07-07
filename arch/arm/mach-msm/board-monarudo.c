@@ -855,12 +855,15 @@ static int pm8921_is_wireless_charger(void)
 		return 0;
 }
 
+static int critical_alarm_voltage_mv[] = {3000, 3100, 3200, 3400};
+
 static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = 0,
 	.chg_limit_active_mask = HTC_BATT_CHG_LIMIT_BIT_TALK |
 								HTC_BATT_CHG_LIMIT_BIT_NAVI,
 	.critical_low_voltage_mv = 3100,
-	.critical_alarm_voltage_mv = 3000,
+        .critical_alarm_vol_ptr = critical_alarm_voltage_mv,
+        .critical_alarm_vol_cols = sizeof(critical_alarm_voltage_mv) / sizeof(int),
 	.overload_vol_thr_mv = 4000,
 	.overload_curr_thr_ma = 0,
 	
@@ -3517,40 +3520,6 @@ static struct msm_spm_seq_entry msm_spm_seq_list[] __initdata = {
 	},
 };
 
-#ifdef CONFIG_PERFLOCK
-static unsigned dlx_perf_acpu_table[] = {
-	594000000, 
-	810000000, 
-	1026000000, 
-	1134000000,
-	1512000000, 
-};
-
-static struct perflock_data dlx_floor_data = {
-	.perf_acpu_table = dlx_perf_acpu_table,
-	.table_size = ARRAY_SIZE(dlx_perf_acpu_table),
-};
-
-static struct perflock_data dlx_cpufreq_ceiling_data = {
-	.perf_acpu_table = dlx_perf_acpu_table,
-	.table_size = ARRAY_SIZE(dlx_perf_acpu_table),
-};
-
-static struct perflock_pdata perflock_pdata = {
-	.perf_floor = &dlx_floor_data,
-	.perf_ceiling = &dlx_cpufreq_ceiling_data,
-};
-
-struct platform_device msm8064_device_perf_lock = {
-	.name = "perf_lock",
-	.id = -1,
-	.dev = {
-		.platform_data = &perflock_pdata,
-	},
-};
-
-#endif
-
 static uint8_t l2_spm_wfi_cmd_sequence[] __initdata = {
 	0x00, 0x20, 0x03, 0x20,
 	0x00, 0x0f,
@@ -4032,7 +4001,7 @@ struct platform_device device_htc_ramdump = {
 };
 
 static struct platform_device *common_devices[] __initdata = {
-	&msm8960_device_acpuclk,
+	&msm8064_device_acpuclk,
 	&ram_console_device,
 	&apq8064_device_dmov,
 	&apq8064_device_qup_i2c_gsbi1,
@@ -4674,12 +4643,12 @@ static void __init monarudo_common_init(void)
 	if (system_rev <= XC)
 		clk_ignor_list_add("msm_sdcc.3", "core_clk", &apq8064_clock_init_data);
 	else if (system_rev >= XD)
-		clk_ignor_list_add("msm_sdcc.3", "core_clk", &monarudo_clock_init_data_xd);
+		clk_ignor_list_add("msm_sdcc.3", "core_clk", &apq8064_clock_init_data_r2);
 	
 	if ( system_rev <= XC )
 	msm_clock_init(&apq8064_clock_init_data);
 	else if ( system_rev >= XD )
-		msm_clock_init(&monarudo_clock_init_data_xd);
+		msm_clock_init(&apq8064_clock_init_data_r2);
 	monarudo_init_gpiomux();
 #ifdef CONFIG_RESET_BY_CABLE_IN
 	pr_info("[CABLE] Enable Ac Reset Function.(%d) \n", system_rev);
