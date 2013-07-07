@@ -585,7 +585,6 @@ static struct platform_device wfd_device = {
 };
 #endif
 
-
 void __init monarudo_mdp_writeback(struct memtype_reserve* reserve_table)
 {
 	mdp_pdata.ov0_wb_size = MSM_FB_OVERLAY0_WRITEBACK_SIZE;
@@ -600,6 +599,7 @@ void __init monarudo_mdp_writeback(struct memtype_reserve* reserve_table)
 static int first_init = 1;
 uint32_t cfg_panel_te_active[] = {GPIO_CFG(LCD_TE, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA)};
 uint32_t cfg_panel_te_sleep[] = {GPIO_CFG(LCD_TE, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)};
+
 static int mipi_dsi_panel_power(int on)
 {
 	static bool dsi_power_on = false;
@@ -1329,11 +1329,11 @@ void __init monarudo_init_fb(void)
 		wa_xo = msm_xo_get(MSM_XO_TCXO_D0, "mipi");
 	}
 	msm_fb_register_device("dtv", &dtv_pdata);
-}
 #ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
-  platform_device_register(&wfd_panel_device);
-  platform_device_register(&wfd_device);
+	platform_device_register(&wfd_panel_device);
+	platform_device_register(&wfd_device);
 #endif
+}
 
 static int __init monarudo_panel_init(void)
 {
