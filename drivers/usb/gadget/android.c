@@ -627,7 +627,6 @@ static struct android_usb_function rmnet_function = {
 	.performance_lock = 1,
 };
 
-#if 0
 #define MAX_MBIM_INSTANCES 1
 
 
@@ -654,7 +653,6 @@ static struct android_usb_function mbim_function = {
 	.bind_config	= mbim_function_bind_config,
 	.init		= mbim_function_init,
 };
-#endif
 
 static char diag_clients[32];	    
 static char diag_string[4][32];
@@ -1874,6 +1872,7 @@ static struct android_usb_function *supported_functions[] = {
  	&rmnet_sdio_function,
  	&rmnet_smd_sdio_function,
  	&ccid_function,
+        &mbim_function,
 	NULL
 };
 

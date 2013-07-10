@@ -33,10 +33,6 @@ static ssize_t htc_battery_show_property(struct device *dev,
 					struct device_attribute *attr,
 					char *buf);
 
-static ssize_t htc_battery_rt_attr_show(struct device *dev,
-					struct device_attribute *attr,
-					char *buf);
-
 static int htc_power_get_property(struct power_supply *psy,
 				enum power_supply_property psp,
 				union power_supply_propval *val);
@@ -472,16 +468,9 @@ static struct device_attribute htc_set_delta_attrs[] = {
 		htc_battery_set_navigation),
 };
 
-static struct device_attribute htc_battery_rt_attrs[] = {
-	__ATTR(batt_vol_now, S_IRUGO, htc_battery_rt_attr_show, NULL),
-	__ATTR(batt_current_now, S_IRUGO, htc_battery_rt_attr_show, NULL),
-	__ATTR(batt_temp_now, S_IRUGO, htc_battery_rt_attr_show, NULL),
-};
-
-
 static int htc_battery_create_attrs(struct device *dev)
 {
-	int i = 0, j = 0, k = 0, rc = 0;
+	int i = 0, j = 0, rc = 0;
 
 	for (i = 0; i < ARRAY_SIZE(htc_battery_attrs); i++) {
 		rc = device_create_file(dev, &htc_battery_attrs[i]);
@@ -495,23 +484,14 @@ static int htc_battery_create_attrs(struct device *dev)
 			goto htc_delta_attrs_failed;
 	}
 
-	for (k = 0; k < ARRAY_SIZE(htc_battery_rt_attrs); k++) {
-		rc = device_create_file(dev, &htc_battery_rt_attrs[k]);
-		if (rc)
-			goto htc_rt_attrs_failed;
-	}
-
 	goto succeed;
 
-htc_rt_attrs_failed:
-	while (k--)
-		device_remove_file(dev, &htc_battery_rt_attrs[k]);
-htc_delta_attrs_failed:
-	while (j--)
-		device_remove_file(dev, &htc_set_delta_attrs[j]);
 htc_attrs_failed:
 	while (i--)
 		device_remove_file(dev, &htc_battery_attrs[i]);
+htc_delta_attrs_failed:
+	while (j--)
+		device_remove_file(dev, &htc_set_delta_attrs[j]);
 succeed:
 	return rc;
 }
@@ -664,30 +644,6 @@ static ssize_t htc_battery_show_property(struct device *dev,
 		BATT_ERR("%s: battery: attribute is not supported: %d",
 			__func__, off);
 
-	return i;
-}
-
-static ssize_t htc_battery_rt_attr_show(struct device *dev,
-					struct device_attribute *attr,
-					char *buf)
-{
-	int i = 0;
-	int val = 0;
-	int rc = 0;
-	const ptrdiff_t attr_index = attr - htc_battery_rt_attrs;
-
-	if (!battery_core_info.func.func_get_batt_rt_attr) {
-		BATT_ERR("%s: func_get_batt_rt_attr does not exist", __func__);
-		return -EINVAL;
-	}
-
-	rc = battery_core_info.func.func_get_batt_rt_attr(attr_index, &val);
-	if (rc) {
-		BATT_ERR("%s: get_batt_rt_attrs[%d] failed", __func__, attr_index);
-		return -EINVAL;
-	}
-
-	i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", val);
 	return i;
 }
 
@@ -934,9 +890,6 @@ int htc_battery_core_register(struct device *dev,
 
 	mutex_init(&battery_core_info.info_lock);
 
-	if (htc_battery->func_get_batt_rt_attr)
-		battery_core_info.func.func_get_batt_rt_attr =
-					htc_battery->func_get_batt_rt_attr;
 	if (htc_battery->func_show_batt_attr)
 		battery_core_info.func.func_show_batt_attr =
 					htc_battery->func_show_batt_attr;
