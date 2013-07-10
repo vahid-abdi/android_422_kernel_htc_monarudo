@@ -4143,9 +4143,6 @@ static struct platform_device *common_devices[] __initdata = {
 #ifdef CONFIG_MSM_CACHE_ERP
 	&apq8064_device_cache_erp,
 #endif
-#ifdef CONFIG_PERFLOCK
-	&msm8064_device_perf_lock,
-#endif
 	&apq_compr_dsp,
 	&apq_multi_ch_pcm,
 };
